@@ -21,6 +21,9 @@ import {
   User as UserIcon,
   ChevronRight,
   Clock3,
+  Gem,
+  Tag,
+  Calendar,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
@@ -260,7 +263,7 @@ function UserProfileBar({ user }: UserProfileBarProps) {
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="fixed right-4 top-4 z-40 flex flex-col items-end">
+    <div className="fixed right-4 top-24 sm:top-4 z-40 flex flex-col items-end">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -395,8 +398,18 @@ function Hero() {
     <section
       id="hero"
       className="hero-card relative w-full overflow-hidden rounded-none px-4 py-16 text-center sm:px-12 lg:px-24"
+      style={{
+        backgroundImage: 'url(https://anyimage.io/storage/uploads/2a9ca84f0b187c1e11ebab63668f1f7d)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
     >
-      <div className="mx-auto max-w-5xl">
+      {/* Dark overlay for better text visibility */}
+      <div className="absolute inset-0 bg-black/70" />
+
+      {/* Content */}
+      <div className="relative z-10 mx-auto max-w-5xl">
         <div className="pill-outline mx-auto">
           <span className="text-xs uppercase tracking-[0.4em] text-emerald-300">
             Pakistan's Premier Free Fire Tournament Platform
@@ -442,7 +455,7 @@ function Hero() {
             </Link>
             <Link
               href="/tournaments"
-              className="rounded-full border border-white/15 px-8 py-4 text-lg font-semibold text-white transition hover:border-emerald-400/50 hover:text-emerald-100"
+              className="rounded-full border border-white/15 px-8 py-4 text-lg font-semibold text-white shadow-[0_0_20px_rgba(16,185,129,0.15)] transition hover:border-emerald-400/50 hover:text-emerald-100 hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
             >
               View Leaderboard
             </Link>
@@ -577,38 +590,260 @@ type BrowseTournamentsProps = {
 };
 
 function BrowseTournaments({ activeTab, onTabChange }: BrowseTournamentsProps) {
+  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTournaments = async () => {
+      try {
+        setLoading(true);
+        // Import getTournaments and checkTournamentState dynamically
+        const { getTournaments } = await import("./lib/firebase");
+        const { checkTournamentState } = await import("./lib/tournamentStateManager");
+
+        const data = await getTournaments();
+
+        // Check tournament states based on current time
+        const updatedData = data.map(tournament => {
+          const newStatus = checkTournamentState(tournament);
+          if (newStatus) {
+            return { ...tournament, status: newStatus };
+          }
+          return tournament;
+        });
+
+        setTournaments(updatedData);
+      } catch (err) {
+        console.error("Failed to load tournaments:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTournaments();
+
+    // Refresh tournament states every 30 seconds
+    const timer = setInterval(() => {
+      setTournaments(prevTournaments => {
+        const updatedTournaments = prevTournaments.map(tournament => {
+          // Import checkTournamentState synchronously from already loaded module
+          const { checkTournamentState } = require("./lib/tournamentStateManager");
+          const newStatus = checkTournamentState(tournament);
+          if (newStatus) {
+            return { ...tournament, status: newStatus };
+          }
+          return tournament;
+        });
+        return updatedTournaments;
+      });
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Filter tournaments by status based on active tab
+  const filteredTournaments = tournaments.filter(tournament => {
+    if (activeTab === "Upcoming") {
+      return tournament.status === "upcoming";
+    } else if (activeTab === "Ongoing") {
+      return tournament.status === "ongoing";
+    } else if (activeTab === "Past") {
+      return tournament.status === "completed";
+    }
+    return false;
+  });
+
+  // Show only first 3 tournaments
+  const displayTournaments = filteredTournaments.slice(0, 3);
+
+  const formatDateTime = (date: Date) => {
+    try {
+      return new Date(date).toLocaleString("en-PK", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return "-";
+    }
+  };
+
   return (
     <section id="tournaments" className="space-y-6">
       <div className="space-y-2 text-center">
-        <p className="text-base uppercase tracking-[0.35em] text-emerald-300">
+        <p className="text-lg font-bold uppercase tracking-[0.35em] text-emerald-300">
           Browse Tournaments
         </p>
-        <h2 className="text-3xl font-semibold text-white">Pick your lobby</h2>
+        <h2 className="text-4xl font-bold text-white sm:text-5xl">Pick your lobby</h2>
       </div>
       <div className="flex flex-wrap justify-center gap-3">
         {tournamentTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
-            className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-              activeTab === tab
-                ? "bg-emerald-400 text-black"
-                : "border border-white/10 text-muted hover:text-white"
-            }`}
+            className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === tab
+              ? "bg-emerald-400 text-black"
+              : "border border-white/10 text-muted hover:text-white"
+              }`}
           >
             {tab}
           </button>
         ))}
       </div>
-      <div className="panel-dark rounded-3xl border border-dashed border-white/15 px-6 py-16 text-center text-muted">
-        <Trophy className="mx-auto h-10 w-10 text-white/25" />
-        <p className="mt-4 text-lg font-semibold text-white">
-          No {activeTab} Tournaments
-        </p>
-        <p className="text-sm text-muted">
-          Check back soon or follow our Discord for instant announcements.
-        </p>
-      </div>
+
+      {loading ? (
+        <div className="panel-dark rounded-3xl border border-white/10 px-6 py-10 text-center text-muted">
+          <p className="text-sm">Loading tournaments...</p>
+        </div>
+      ) : displayTournaments.length > 0 ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {displayTournaments.map((tournament) => {
+            const statusLabel = tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1);
+            const isCompleted = tournament.status === "completed";
+            const isOngoing = tournament.status === "ongoing";
+            const isUpcoming = tournament.status === "upcoming";
+            const isCancelled = tournament.status === "cancelled";
+            const isFull = tournament.registeredSlots >= tournament.maxSlots;
+            const fillPercent = Math.min(100, Math.round((tournament.registeredSlots / Math.max(1, tournament.maxSlots)) * 100));
+
+            const modeLabel = tournament.mode
+              .replace("-", " ")
+              .replace(/^(.)/, (c: string) => c.toUpperCase());
+            const categoryLabel = tournament.type
+              .replace("-", " ")
+              .replace(/^(.)/, (c: string) => c.toUpperCase());
+
+            const statusClasses = isCancelled
+              ? "bg-red-500/15 text-red-300"
+              : isCompleted
+                ? "bg-gray-500/15 text-gray-200"
+                : isOngoing
+                  ? "bg-emerald-500/15 text-emerald-300"
+                  : "bg-blue-500/15 text-blue-300";
+
+            const isJoinable = (isUpcoming || isOngoing) && !isCancelled;
+
+            return (
+              <article
+                key={tournament.id}
+                className="flex w-full max-w-sm flex-col justify-between rounded-md border border-emerald-500/20 bg-gradient-to-b from-[#071829] via-[#050b10] to-[#020509] px-6 py-6 text-sm shadow-[0_30px_90px_rgba(0,0,0,0.85)] transition-transform duration-200 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-[0_40px_120px_rgba(0,0,0,0.95)] md:mx-auto"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-white">
+                        {tournament.name}
+                      </h2>
+                      <p className="mt-1 line-clamp-1 text-xs text-muted">
+                        {tournament.description || "Je Esports Private Limited..."}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusClasses}`}
+                    >
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-4 text-xs text-muted">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Gem className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Entry Fee</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-300">
+                        <Gem className="h-4 w-4" />
+                        {tournament.entryFee}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Users className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Mode</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">
+                        {modeLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Tag className="h-4 w-4 text-purple-300" />
+                        <span className="font-medium text-white/80">Category</span>
+                      </div>
+                      <span className="text-sm font-semibold text-purple-300">
+                        {categoryLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Users className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Participants</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">
+                        {tournament.registeredSlots}
+                        <span className="opacity-70">/{tournament.maxSlots}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Calendar className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Date & Time</span>
+                      </div>
+                      <span className="text-xs font-semibold text-white text-right leading-tight">
+                        {formatDateTime(tournament.startTime)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-emerald-400"
+                        style={{ width: `${fillPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted">{fillPercent}% full</p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/tournaments/${tournament.id}`}
+                  className={`mt-4 inline-flex items-center justify-center rounded-full px-6 py-2 text-center text-sm font-semibold transition ${isCancelled
+                    ? "cursor-not-allowed bg-[#111111] text-white/40"
+                    : isJoinable && !isFull
+                      ? "bg-[#14cc6f] text-black hover:bg-[#0fa75b]"
+                      : "bg-[#111111] text-white/80"
+                    }`}
+                >
+                  {isCancelled
+                    ? "Cancelled"
+                    : isCompleted
+                      ? "View Results"
+                      : isFull
+                        ? "Full"
+                        : "Join Now"}
+                </Link>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="panel-dark rounded-3xl border border-dashed border-white/15 px-6 py-16 text-center text-muted">
+          <Trophy className="mx-auto h-10 w-10 text-white/25" />
+          <p className="mt-4 text-lg font-semibold text-white">
+            No {activeTab} Tournaments
+          </p>
+          <p className="text-sm text-muted">
+            Check back soon or follow our Discord for instant announcements.
+          </p>
+        </div>
+      )}
+
       <div className="text-center">
         <Link
           href="/tournaments"

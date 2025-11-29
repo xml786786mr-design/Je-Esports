@@ -1,8 +1,8 @@
-export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'awaiting_payout' | 'paid';
 
 export type TournamentMode = 'solo' | 'duo' | 'squad' | 'clash-squad';
 
-export type TournamentType = 'per-kill' | 'survival' | 'top-kill';
+export type TournamentType = 'per-kill' | 'survival' | 'clash-squad' | 'lone-wolf' | 'top-kill'; // Include top-kill for backwards compatibility
 
 export interface Tournament {
   id: string;
@@ -31,6 +31,7 @@ export interface PlayerRegistration {
   userEmail: string;
   tournamentId: string;
   teamName?: string;
+  slotNumber?: number;
   registrationTime: Date;
   position?: number;
   kills?: number;

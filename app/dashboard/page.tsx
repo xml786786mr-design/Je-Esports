@@ -4,6 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { getPlayerRegistrations } from "../lib/firebase";
+
 import {
   ArrowRight,
   LayoutDashboard,
@@ -22,7 +26,6 @@ import {
   Menu,
 } from "lucide-react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-
 import { auth } from "../firebase";
 
 const navLinks = [
@@ -41,11 +44,18 @@ type SiteHeaderProps = {
 
 type UserProfileBarProps = {
   user: User;
+  balance?: number;
 };
 
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [stats, setStats] = useState({
+    balance: 0,
+    tournamentsPlayed: 0,
+    totalKills: 0,
+    totalEarnings: 0
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -60,6 +70,32 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [router]);
 
+  useEffect(() => {
+    if (currentUser) {
+      const fetchStats = async () => {
+        try {
+          // Fetch Wallet
+          const walletRef = doc(db, "wallets", currentUser.uid);
+          const walletSnap = await getDoc(walletRef);
+          const walletData = walletSnap.exists() ? walletSnap.data() : null;
+
+          // Fetch Registrations
+          const registrations = await getPlayerRegistrations(currentUser.uid);
+
+          setStats({
+            balance: walletData?.balance || 0,
+            tournamentsPlayed: registrations.length,
+            totalKills: 0, // Placeholder
+            totalEarnings: walletData?.totalEarnings || 0
+          });
+        } catch (error) {
+          console.error("Error fetching dashboard stats:", error);
+        }
+      };
+      fetchStats();
+    }
+  }, [currentUser]);
+
   const displayName =
     currentUser?.displayName || currentUser?.email?.split("@")[0] || "Player";
   const handle = currentUser?.email
@@ -70,7 +106,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#050608] text-white">
       <SiteHeader user={currentUser} authReady={authReady} />
-      {authReady && currentUser ? <UserProfileBar user={currentUser} /> : null}
+      {authReady && currentUser ? <UserProfileBar user={currentUser} balance={stats.balance} /> : null}
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-24 pt-8 lg:px-10">
         <section className="rounded-3xl bg-[#080f0c] px-6 py-6 sm:flex sm:items-center sm:gap-4">
@@ -84,28 +120,28 @@ export default function DashboardPage() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-4">
-          {[ 
+          {[
             {
               label: "Wallet Balance",
-              value: "0",
+              value: stats.balance.toString(),
               sublabel: "diamonds",
               icon: WalletIcon,
             },
             {
               label: "Tournaments Played",
-              value: "0",
+              value: stats.tournamentsPlayed.toString(),
               sublabel: "",
               icon: Trophy,
             },
             {
               label: "Total Kills",
-              value: "0",
+              value: stats.totalKills.toString(),
               sublabel: "",
               icon: Target,
             },
             {
               label: "Total Earnings",
-              value: "0",
+              value: stats.totalEarnings.toString(),
               sublabel: "diamonds",
               icon: TrendingUp,
             },
@@ -177,8 +213,8 @@ export default function DashboardPage() {
             </Link>
           </div>
         </section>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
 
@@ -220,11 +256,10 @@ function SiteHeader({ user, authReady }: SiteHeaderProps) {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`rounded-full px-3 py-1.5 transition ${
-                  isActive
-                    ? "bg-[#14cc6f] text-black"
-                    : "hover:bg-white/5 hover:text-white"
-                }`}
+                className={`rounded-full px-3 py-1.5 transition ${isActive
+                  ? "bg-[#14cc6f] text-black"
+                  : "hover:bg-white/5 hover:text-white"
+                  }`}
               >
                 {item.label}
               </Link>
@@ -271,11 +306,10 @@ function SiteHeader({ user, authReady }: SiteHeaderProps) {
                   key={item.label}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`rounded-full px-3 py-2 transition ${
-                    isActive
-                      ? "bg-[#14cc6f] text-black"
-                      : "hover:bg-white/5 hover:text-white"
-                  }`}
+                  className={`rounded-full px-3 py-2 transition ${isActive
+                    ? "bg-[#14cc6f] text-black"
+                    : "hover:bg-white/5 hover:text-white"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -306,7 +340,7 @@ function SiteHeader({ user, authReady }: SiteHeaderProps) {
   );
 }
 
-function UserProfileBar({ user }: UserProfileBarProps) {
+function UserProfileBar({ user, balance }: UserProfileBarProps) {
   const displayName = user.displayName || user.email?.split("@")[0] || "Player";
   const email = user.email ?? "";
   const roleLabel =
@@ -359,10 +393,15 @@ function UserProfileBar({ user }: UserProfileBarProps) {
                 setOpen(false);
                 router.push("/wallet");
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
+              className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-white/5"
             >
-              <WalletIcon className="h-4 w-4" />
-              <span>Wallet</span>
+              <div className="flex items-center gap-2">
+                <WalletIcon className="h-4 w-4" />
+                <span>Wallet</span>
+              </div>
+              {balance !== undefined && (
+                <span className="text-xs font-semibold text-emerald-300">{balance} 💎</span>
+              )}
             </button>
             <button
               onClick={() => {

@@ -119,7 +119,8 @@ export default function PrivacyPage() {
             us at:
           </p>
           <p className="mt-1 text-sm text-muted">
-            Email: support@fftournaments.com
+            Email:support@jeesports.online
+            03165475717
           </p>
         </section>
 

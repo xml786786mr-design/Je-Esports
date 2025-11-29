@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
+    "dev:clean": "if exist .next rmdir /s /q .next && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
-    "framer-motion": "^11.11.1",
     "firebase": "^11.0.2",
+    "framer-motion": "^11.11.1",
     "lucide-react": "^0.454.0",
     "next": "16.0.3",
     "react": "19.2.0",

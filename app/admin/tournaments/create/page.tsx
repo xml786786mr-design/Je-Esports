@@ -42,7 +42,7 @@ export default function AdminCreateTournamentPage() {
       description: "",
       prizeDistribution: "",
       mode: "solo",
-      type: "per-kill",
+      type: "clash-squad",
       entryFee: "50",
       prizePool: "500",
       maxSlots: "100",
@@ -157,6 +157,11 @@ export default function AdminCreateTournamentPage() {
         startTime,
         endTime,
       });
+      
+      // Tournament states will be managed automatically:
+      // - "upcoming" before start time
+      // - "ongoing" between start time and end time
+      // - "completed" after end time
 
       await addDoc(collection(db, "tournaments"), {
         name: form.name.trim(),
@@ -218,7 +223,7 @@ export default function AdminCreateTournamentPage() {
             Create Tournament
           </h1>
           <p className="text-sm text-muted">
-            Configure a new Free Fire tournament and publish it to your players.
+            Configure a new Free Fire tournament with automatic state management based on time.
           </p>
         </header>
 
@@ -326,7 +331,8 @@ export default function AdminCreateTournamentPage() {
                 >
                   <option value="per-kill">Per Kill</option>
                   <option value="survival">Survival</option>
-                  <option value="top-kill">Top Kill</option>
+                  <option value="clash-squad">Clash Squad</option>
+                  <option value="lone-wolf">Lone Wolf</option>
                 </select>
               </div>
             </div>
@@ -351,6 +357,7 @@ export default function AdminCreateTournamentPage() {
                     className="w-1/2 rounded-xl border border-white/10 bg-[#050b0f] px-3 py-2 text-sm text-white outline-none ring-1 ring-transparent transition focus:border-emerald-400 focus:ring-emerald-500/40"
                   />
                 </div>
+                <p className="mt-1 text-[11px] text-emerald-400/70">Tournament will automatically change to "ongoing" at this time</p>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-muted">End time (optional)</label>
@@ -368,6 +375,7 @@ export default function AdminCreateTournamentPage() {
                     className="w-1/2 rounded-xl border border-white/10 bg-[#050b0f] px-3 py-2 text-sm text-white outline-none ring-1 ring-transparent transition focus:border-emerald-400 focus:ring-emerald-500/40"
                   />
                 </div>
+                <p className="mt-1 text-[11px] text-emerald-400/70">Tournament will automatically change to "completed" at this time</p>
               </div>
             </div>
 

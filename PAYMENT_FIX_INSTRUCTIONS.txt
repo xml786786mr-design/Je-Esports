@@ -1,0 +1,36 @@
+URGENT FIX FOR REACT HOOKS ERROR
+==================================
+
+You need to make 2 changes in: app/admin/dashboard/page.tsx
+
+STEP 1: Find line 140 (it says):
+  const [selectedDepositDetails, setSelectedDepositDetails] = useState<PaymentRequest | null>(null);
+
+STEP 2: Add a NEW LINE right after it (line 141):
+  const [paymentSubTab, setPaymentSubTab] = useState<"deposits" | "withdrawals">("deposits");
+
+So lines 140-142 should look like:
+  const [selectedDepositDetails, setSelectedDepositDetails] = useState<PaymentRequest | null>(null);
+  const [paymentSubTab, setPaymentSubTab] = useState<"deposits" | "withdrawals">("deposits");
+
+  const router = useRouter();
+
+---
+
+STEP 3: Find line 1001 (around line 1000-1003, inside "if (activeTab === "payments")"):
+      const [paymentSubTab, setPaymentSubTab] = useState<"deposits" | "withdrawals">("deposits");
+
+STEP 4: DELETE that entire line AND the empty line after it.
+
+After deletion, lines 1000-1003 should look like:
+    if (activeTab === "payments") {
+      return (
+        <div className="mt-6 space-y-6">
+
+---
+
+WHY THIS FIXES IT:
+React hooks MUST be at the top level of the component, NOT inside if statements.
+Moving useState to the top fixes the "change in order of Hooks" error.
+
+SAVE THE FILE and the error will disappear!

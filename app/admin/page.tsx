@@ -258,7 +258,7 @@ export default function AdminPage() {
               
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Entry Fee (PKR)
+                  Entry Fee (diamonds)
                 </label>
                 <input
                   type="number"
@@ -273,7 +273,7 @@ export default function AdminPage() {
               
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Prize Pool (PKR)
+                  Prize Pool (diamonds)
                 </label>
                 <input
                   type="number"

@@ -2,25 +2,30 @@ import Link from "next/link";
 import { Mail, Phone, MapPin, MessageSquare } from "lucide-react";
 
 export default function ContactPage() {
-  const info = [
-    {
-      icon: Mail,
-      label: "Support Email",
-      value: "support@jeesports.gg",
-      href: "mailto:support@jeesports.gg",
-    },
-    {
-      icon: Phone,
-      label: "Hotline",
-      value: "+92 300 123 4567",
-      href: "tel:+923001234567",
-    },
-    {
-      icon: MapPin,
-      label: "HQ",
-      value: "Karachi, Pakistan",
-    },
-  ];
+  const info: {
+    icon: any;
+    label: string;
+    value: string;
+    href?: string;
+  }[] = [
+      {
+        icon: Mail,
+        label: "Support Email",
+        value: "support@jeesports.online",
+        href: "mailto:support@jeesports.online",
+      },
+      {
+        icon: Phone,
+        label: "Hotline",
+        value: "+92 3165475717",
+        href: "tel:+923165475717",
+      },
+      {
+        icon: MapPin,
+        label: "HQ",
+        value: "Karachi, Pakistan",
+      },
+    ];
 
   return (
     <div className="global-bg min-h-screen px-4 pb-24 text-white lg:px-10">

@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { checkTournamentState } from "../lib/tournamentStateManager";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarClock, Coins, Filter, Search, Users } from "lucide-react";
+import { CalendarClock, Gem, Filter, List, Search, Tag, Users } from "lucide-react";
 
 import { getTournaments } from "../lib/firebase";
-import type { Tournament, TournamentMode } from "../lib/types";
+import type { Tournament, TournamentType } from "../lib/types";
 
 const filters = [
   { label: "All Tournaments", value: "all" },
-  { label: "Solo Per Kill", value: "solo" },
-  { label: "Survival", value: "duo" },
-  { label: "Clash Squad", value: "squad" },
+  { label: "Per Kill", value: "per-kill" },
+  { label: "Survival", value: "survival" },
+  { label: "Clash Squad", value: "clash-squad" },
+  { label: "Lone Wolf", value: "lone-wolf" },
 ];
 
 export default function TournamentsPage() {
@@ -34,10 +36,10 @@ function TournamentsPageInner() {
   const searchParams = useSearchParams();
 
   const [activeFilter, setActiveFilter] = useState(() => {
-    const mode = searchParams.get("mode");
-    if (!mode) return "all";
-    const value = mode.toLowerCase();
-    return filters.some((filter) => filter.value === value) ? value : "all";
+    const type = searchParams.get("type");
+    if (!type) return "all";
+    const value = type.toLowerCase();
+    return filters.some((f) => f.value === value) ? value : "all";
   });
   const [query, setQuery] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -50,7 +52,17 @@ function TournamentsPageInner() {
         setLoading(true);
         setError(null);
         const data = await getTournaments();
-        setTournaments(data);
+        
+        // Check tournament states based on current time
+        const updatedData = data.map(tournament => {
+          const newStatus = checkTournamentState(tournament);
+          if (newStatus) {
+            return {...tournament, status: newStatus};
+          }
+          return tournament;
+        });
+        
+        setTournaments(updatedData);
       } catch (err) {
         console.error(err);
         setError("Failed to load tournaments. Please try again.");
@@ -60,6 +72,30 @@ function TournamentsPageInner() {
     };
 
     load();
+    
+    // Set up a timer to check tournament states more frequently (every 15 seconds)
+    const timer = setInterval(() => {
+      setTournaments(prevTournaments => {
+        const updatedTournaments = prevTournaments.map(tournament => {
+          const newStatus = checkTournamentState(tournament);
+          if (newStatus) {
+            console.log(`Client: Tournament ${tournament.name} (${tournament.id}) changed from ${tournament.status} to ${newStatus}`);
+            return {...tournament, status: newStatus};
+          }
+          return tournament;
+        });
+        
+        // If any tournament changed state, log it
+        const changedCount = updatedTournaments.filter((t, i) => t.status !== prevTournaments[i].status).length;
+        if (changedCount > 0) {
+          console.log(`Updated ${changedCount} tournament states automatically`);
+        }
+        
+        return updatedTournaments;
+      });
+    }, 15000); // Check every 15 seconds
+    
+    return () => clearInterval(timer);
   }, []);
 
   const handleFilterClick = (value: string) => {
@@ -67,17 +103,18 @@ function TournamentsPageInner() {
     if (value === "all") {
       router.push("/tournaments");
     } else {
-      router.push(`/tournaments?mode=${value}`);
+      router.push(`/tournaments?type=${value}`);
     }
   };
 
   const filteredEvents = useMemo(() => {
     const lowered = query.toLowerCase();
     return tournaments.filter((tournament) => {
-      const matchesMode =
-        activeFilter === "all" || tournament.mode === (activeFilter as TournamentMode);
+      const matchesType =
+        activeFilter === "all" || 
+        (tournament.type && tournament.type === activeFilter);
       const matchesQuery = tournament.name.toLowerCase().includes(lowered);
-      return matchesMode && matchesQuery;
+      return matchesType && matchesQuery;
     });
   }, [tournaments, activeFilter, query]);
 
@@ -206,64 +243,55 @@ function TournamentsPageInner() {
                     </span>
                   </div>
 
-                  <div className="mt-4 space-y-3 text-xs text-muted">
+                  <div className="mt-4 space-y-4 text-xs text-muted">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Coins className="h-4 w-4 text-emerald-300" />
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-                          Entry Fee
-                        </span>
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Gem className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Entry Fee</span>
                       </div>
-                      <span className="text-sm font-semibold text-emerald-300">
-                        {tournament.entryFee} diamonds
+                      <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-300">
+                        <Gem className="h-4 w-4" />
+                        {tournament.entryFee}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
-                        <span className="h-1.5 w-4 rounded-full bg-white/40" />
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-                          Mode
-                        </span>
-                      </span>
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <List className="h-4 w-4 text-emerald-300" />
+                        <span className="font-medium text-white/80">Mode</span>
+                      </div>
                       <span className="text-sm font-semibold text-white">
                         {modeLabel}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
-                        <span className="h-1.5 w-4 rounded-full bg-purple-400" />
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-                          Category
-                        </span>
-                      </span>
-                      <span className="text-sm font-semibold text-emerald-300">
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Tag className="h-4 w-4 text-purple-300" />
+                        <span className="font-medium text-white/80">Category</span>
+                      </div>
+                      <span className="text-sm font-semibold text-purple-300">
                         {categoryLabel}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-xs text-muted">
                         <Users className="h-4 w-4 text-emerald-300" />
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-                          Participants
-                        </span>
-                      </span>
+                        <span className="font-medium text-white/80">Participants</span>
+                      </div>
                       <span className="text-sm font-semibold text-white">
-                        {tournament.registeredSlots}/
-                        <span className="opacity-70">{tournament.maxSlots}</span>
+                        {tournament.registeredSlots}
+                        <span className="opacity-70">/{tournament.maxSlots}</span>
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-xs text-muted">
                         <CalendarClock className="h-4 w-4 text-emerald-300" />
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-white/60">
-                          Date &amp; Time
-                        </span>
-                      </span>
-                      <span className="text-xs font-semibold text-white text-right">
+                        <span className="font-medium text-white/80">Date &amp; Time</span>
+                      </div>
+                      <span className="text-xs font-semibold text-white text-right leading-tight">
                         {formatDateTime(tournament.startTime)}
                       </span>
                     </div>
